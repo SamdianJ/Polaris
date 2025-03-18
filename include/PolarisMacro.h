@@ -25,6 +25,17 @@
 #endif
 
 //--------------------------------------------
+// host device 函数
+//--------------------------------------------
+#ifdef __CUDACC__
+#define HOST_DEVICE_FUNC __host__ __device__
+#define HOST_FUNC __host__
+#else
+#define HOST_DEVICE_FUNC
+#define HOST_FUNC 
+#endif
+
+//--------------------------------------------
 // 动态库导入/导出宏（Windows专用）
 //--------------------------------------------
 #if PLS_ENGINE_PLATFORM_WINDOWS
@@ -134,3 +145,14 @@
     #define PLS_ENGINE_LOG(message)
     #define PLS_ENGINE_LOG_ERROR(message)
 #endif
+
+#ifdef PLS_ENGINE_COMPILER_MSVC
+    #define PTRRESTRICT __restrict
+#else
+    #define PTRRESTRICT __restrict__
+#endif
+
+using Label = std::uint32_t;
+using PlsInt32 = std::int32_t;
+using PlsInt64 = std::int64_t;
+using PlsInt8 = std::int8_t;

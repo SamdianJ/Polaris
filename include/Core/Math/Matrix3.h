@@ -4,7 +4,7 @@
 #include <cmath>
 #include <iostream>
 
-namespace PhysicsEngine {
+namespace Polaris {
 namespace Math {
 
 class Matrix3 {
@@ -13,14 +13,14 @@ public:
     Scalar m[9];
 
     // 默认构造函数，生成单位矩阵
-    Matrix3() {
+    HOST_DEVICE_FUNC Matrix3() {
         m[0] = 1.0f; m[1] = 0.0f; m[2] = 0.0f;
         m[3] = 0.0f; m[4] = 1.0f; m[5] = 0.0f;
         m[6] = 0.0f; m[7] = 0.0f; m[8] = 1.0f;
     }
 
     // 构造函数，按行优先顺序指定9个元素
-    Matrix3(Scalar m0, Scalar m1, Scalar m2,
+    HOST_DEVICE_FUNC Matrix3(Scalar m0, Scalar m1, Scalar m2,
         Scalar m3, Scalar m4, Scalar m5,
         Scalar m6, Scalar m7, Scalar m8) {
         m[0] = m0; m[1] = m1; m[2] = m2;
@@ -29,16 +29,16 @@ public:
     }
 
     // 下标运算符，获取第 i 行第 j 列的元素（0 <= i,j < 3）
-    Scalar& operator()(int i, int j) {
+    HOST_DEVICE_FUNC Scalar& operator()(int i, int j) {
         return m[i * 3 + j];
     }
     
-    const Scalar& operator()(int i, int j) const {
+    HOST_DEVICE_FUNC const Scalar& operator()(int i, int j) const {
         return m[i * 3 + j];
     }
 
     // 矩阵加法
-    Matrix3 operator+(const Matrix3 &other) const {
+    HOST_DEVICE_FUNC Matrix3 operator+(const Matrix3 &other) const {
         return Matrix3(
             m[0] + other.m[0], m[1] + other.m[1], m[2] + other.m[2],
             m[3] + other.m[3], m[4] + other.m[4], m[5] + other.m[5],
@@ -47,7 +47,7 @@ public:
     }
 
     // 矩阵减法
-    Matrix3 operator-(const Matrix3 &other) const {
+    HOST_DEVICE_FUNC Matrix3 operator-(const Matrix3 &other) const {
         return Matrix3(
             m[0] - other.m[0], m[1] - other.m[1], m[2] - other.m[2],
             m[3] - other.m[3], m[4] - other.m[4], m[5] - other.m[5],
@@ -56,7 +56,7 @@ public:
     }
 
     // 标量乘法
-    Matrix3 operator*(Scalar scalar) const {
+    HOST_DEVICE_FUNC Matrix3 operator*(Scalar scalar) const {
         return Matrix3(
             m[0] * scalar, m[1] * scalar, m[2] * scalar,
             m[3] * scalar, m[4] * scalar, m[5] * scalar,
@@ -65,7 +65,7 @@ public:
     }
 
     // 矩阵乘法（矩阵相乘）
-    Matrix3 operator*(const Matrix3 &other) const {
+    HOST_DEVICE_FUNC Matrix3 operator*(const Matrix3 &other) const {
         Matrix3 result;
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
@@ -80,14 +80,14 @@ public:
     }
 
     // 计算行列式
-    Scalar Determinant() const {
+    HOST_DEVICE_FUNC Scalar Determinant() const {
         return m[0]*(m[4]*m[8] - m[5]*m[7]) -
                m[1]*(m[3]*m[8] - m[5]*m[6]) +
                m[2]*(m[3]*m[7] - m[4]*m[6]);
     }
 
     // 计算转置矩阵
-    Matrix3 Transpose() const {
+    HOST_DEVICE_FUNC Matrix3 Transpose() const {
         return Matrix3(
             m[0], m[3], m[6],
             m[1], m[4], m[7],
@@ -96,7 +96,7 @@ public:
     }
 
     // 计算逆矩阵，如果行列式为 0，则返回单位矩阵（可根据需要修改错误处理策略）
-    Matrix3 Inverse() const {
+    HOST_DEVICE_FUNC Matrix3 Inverse() const {
         Scalar det = Determinant();
         if (fabs(det) < 1e-6) { // 行列式近似为0
             return Matrix3(); // 返回单位矩阵
@@ -117,19 +117,19 @@ public:
         return inv;
     }
 
-    static Matrix3 Identity()
+    HOST_DEVICE_FUNC static Matrix3 Identity()
     {
         return Matrix3(1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f);
     }
 };
 
 // 重载标量乘法运算符（标量在左侧）
-inline Matrix3 operator*(Scalar scalar, const Matrix3 &mat) {
+HOST_DEVICE_FUNC inline Matrix3 operator*(Scalar scalar, const Matrix3 &mat) {
     return mat * scalar;
 }
 
 // 定义 Matrix3 与 Vector3 的乘法，计算 M * v 的结果（v为列向量）
-inline Vector3 operator*(const Matrix3& mat, const Vector3& vec) {
+HOST_DEVICE_FUNC inline Vector3 operator*(const Matrix3& mat, const Vector3& vec) {
     return Vector3(
         mat(0, 0) * vec.x + mat(0, 1) * vec.y + mat(0, 2) * vec.z,
         mat(1, 0) * vec.x + mat(1, 1) * vec.y + mat(1, 2) * vec.z,
@@ -138,7 +138,7 @@ inline Vector3 operator*(const Matrix3& mat, const Vector3& vec) {
 }
 
 // 重载输出运算符，便于打印矩阵
-inline std::ostream& operator<<(std::ostream &os, const Matrix3 &mat) {
+HOST_FUNC inline std::ostream& operator<<(std::ostream &os, const Matrix3 &mat) {
     os << "[" << mat(0,0) << ", " << mat(0,1) << ", " << mat(0,2) << "]\n"
        << "[" << mat(1,0) << ", " << mat(1,1) << ", " << mat(1,2) << "]\n"
        << "[" << mat(2,0) << ", " << mat(2,1) << ", " << mat(2,2) << "]";

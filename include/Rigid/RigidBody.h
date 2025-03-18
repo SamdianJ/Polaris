@@ -4,7 +4,7 @@
 #include "Core/Math/Quaternion.h"
 #include "Core/Math/Matrix3.h"
 
-namespace PhysicsEngine
+namespace Polaris
 {
     class RigidBody
     {
