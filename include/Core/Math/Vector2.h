@@ -2,7 +2,7 @@
 #define PHYSICSENGINE_MATH_VECTOR2_H
 
 #include <cmath>
-#include "PolarisMacro.h"
+#include "Polaris.h"
 #include <iostream>
 
 namespace Polaris {

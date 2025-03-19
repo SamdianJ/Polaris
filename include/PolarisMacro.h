@@ -134,25 +134,10 @@
     #define PLS_ENGINE_DEPRECATED
 #endif
 
-//--------------------------------------------
-// 调试日志宏
-//--------------------------------------------
-#ifdef PLS_ENGINE_ENABLE_LOGGING
-    #include <iostream>
-    #define PLS_ENGINE_LOG(message) std::cout << "[PhysicsEngine] " << message << std::endl
-    #define PLS_ENGINE_LOG_ERROR(message) std::cerr << "[PhysicsEngine] ERROR: " << message << std::endl
-#else
-    #define PLS_ENGINE_LOG(message)
-    #define PLS_ENGINE_LOG_ERROR(message)
-#endif
-
 #ifdef PLS_ENGINE_COMPILER_MSVC
     #define PTRRESTRICT __restrict
 #else
     #define PTRRESTRICT __restrict__
 #endif
 
-using Label = std::uint32_t;
-using PlsInt32 = std::int32_t;
-using PlsInt64 = std::int64_t;
-using PlsInt8 = std::int8_t;
+

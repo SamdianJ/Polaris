@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <iostream>
+#include "Polaris.h"
 
 namespace Polaris {
 namespace Math {

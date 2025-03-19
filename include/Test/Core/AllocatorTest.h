@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Core/Memory/allocator_CUDA.h"
-#include "PolarisMacro.h"
+#include "Polaris.h"
 
 namespace Polaris
 {

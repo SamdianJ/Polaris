@@ -3,6 +3,7 @@
 #include <vector>
 #include <cassert>
 #include "Platform/Platforms.h"
+#include "Polaris.h"
 
 using namespace Polaris;
 

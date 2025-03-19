@@ -26,6 +26,10 @@ file(GLOB_RECURSE CORE_CUDA_SOURCES "src/Core/*.cu")
 file(GLOB_RECURSE RIGID_CUDA_SOURCES "src/Rigid/*.cu")
 file(GLOB_RECURSE PLATFORM_CUDA_SOURCES "src/Platform/*.cu")
 file(GLOB_RECURSE TEST_CUDA_SOURCES "src/Test/*.cu")
+file(GLOB_RECURSE CORE_HEADS "include/Core/*.h")
+file(GLOB_RECURSE RIGID_HEADS "include/Rigid/*.h")
+file(GLOB_RECURSE PLATFORM_HEADS "include/Platform/*.h")
+file(GLOB_RECURSE TEST_HEADS "include/Test/*.h")
 
 set(CUDA_SOURCES 
     ${CORE_CUDA_SOURCES}
@@ -36,11 +40,13 @@ set(CUDA_SOURCES
 
 set_source_files_properties(${CUDA_SOURCES} PROPERTIES LANGUAGE CUDA)
 
-add_library(Core STATIC ${CORE_SOURCES} ${CORE_CUDA_SOURCES})
-add_library(Rigid STATIC ${RIGID_SOURCES} ${RIGID_CUDA_SOURCES})
-add_library(Platform STATIC ${PLATFORM_SOURCES} ${PLATFORM_CUDA_SOURCES})
-add_library(Test STATIC ${TEST_SOURCES} ${TEST_CUDA_SOURCES})
+add_library(Core STATIC ${CORE_SOURCES} ${CORE_CUDA_SOURCES} ${CORE_HEADS})
+add_library(Rigid STATIC ${RIGID_SOURCES} ${RIGID_CUDA_SOURCES} ${RIGID_HEADS})
+add_library(Platform STATIC ${PLATFORM_SOURCES} ${PLATFORM_CUDA_SOURCES} ${PLATFORM_HEADS})
+add_library(Test STATIC ${TEST_SOURCES} ${TEST_CUDA_SOURCES} ${TEST_HEADS})
 add_executable(PhysicsEngine ${MAIN_SOURCES})
+
+add_subdirectory(thirdparty/fmt)
 
 target_include_directories(Core PUBLIC 
     ${PROJECT_SOURCE_DIR}/include
@@ -59,6 +65,7 @@ target_include_directories(Test PUBLIC
     $<$<COMPILE_LANGUAGE:CUDA>:${PROJECT_SOURCE_DIR}/include/Test>
 )
 target_include_directories(PhysicsEngine PUBLIC ${PROJECT_SOURCE_DIR}/include)
+target_include_directories(PhysicsEngine PRIVATE thirdparty/fmt/include)
 
 target_link_libraries(PhysicsEngine 
     PRIVATE 
@@ -67,6 +74,7 @@ target_link_libraries(PhysicsEngine
     Platform 
     Test
     CUDA::cudart
+    fmt::fmt
 )
 
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)

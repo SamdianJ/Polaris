@@ -4,7 +4,7 @@
 #include <iostream>
 #include <cassert>
 #include <memory>
-#include "PolarisMacro.h"
+#include "Polaris.h"
 #include "Platform/Platforms.h"
 #include "Core/Memory/allocator_CUDA.h"
 #ifdef __CUDACC__
