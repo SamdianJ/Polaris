@@ -4,8 +4,6 @@
 #include <iostream>
 #include <cassert>
 #include <memory>
-#include "Polaris.h"
-#include "Platform/Platforms.h"
 #include "Core/Memory/allocator_CUDA.h"
 #ifdef __CUDACC__
 #include <cuda_runtime.h>
@@ -21,10 +19,14 @@ namespace Polaris
 	{
 	public:
 		static constexpr Platform platform = deviceType;
+		static constexpr Platform PlatformInfo()
+		{
+			return platform;
+		}
 	private:
 		T* _data;        // raw data
-		size_t _size;    
-		size_t _capacity; 
+		size_t _size;
+		size_t _capacity;
 		Allocator _allocator; // allocator
 
 		// 扩展容量
@@ -71,15 +73,15 @@ namespace Polaris
 		};
 
 #ifdef __CUDACC__
-#include <thrust/device_ptr.h>
-		class CudaIterator {
-		private:
-			thrust::device_ptr<T> _ptr;
-		public:
-			HOST_FUNC explicit CudaIterator(T* p) : _ptr(thrust::device_pointer_cast(p)) {}
-			HOST_FUNC thrust::device_ptr<T> operator++() { return ++_ptr; }
-			HOST_FUNC bool operator!=(const CudaIterator& other) const { return _ptr != other._ptr; }
-		};
+		//#include <thrust/device_ptr.h>
+		//		class CudaIterator {
+		//		private:
+		//			thrust::device_ptr<T> _ptr;
+		//		public:
+		//			HOST_FUNC explicit CudaIterator(T* p) : _ptr(thrust::device_pointer_cast(p)) {}
+		//			HOST_FUNC thrust::device_ptr<T> operator++() { return ++_ptr; }
+		//			HOST_FUNC bool operator!=(const CudaIterator& other) const { return _ptr != other._ptr; }
+		//		};
 #endif
 
 		// constructor
@@ -88,34 +90,53 @@ namespace Polaris
 			_data = _allocator.allocate(_capacity);
 		}
 
-		// cpu copy is allowed
-		template <Platform OtherDevice, typename OtherAllocator,
-			typename = std::enable_if_t<OtherDevice == Platform::CPU>>
-			HOST_FUNC Storage(const Storage<T, OtherDevice, OtherAllocator>& other)
-			: _size(other._size),
-			_capacity(other._capacity),
-			_allocator(other._allocator)
+		// disallow cross platform copy
+		HOST_FUNC Storage(const Storage& other)
 		{
-			// 只有当 other 平台为 CPU 时，才能进入该分支
+			static_assert(platform == other.platform, "Cross-platform copy not allowed!");
+
+			// 复制元数据
+			_size = other._size;
+			_capacity = other._capacity;
+			_allocator = other._allocator;
+
 			_data = _allocator.allocate(_capacity);
-			// 对于 trivially copyable 的类型可以使用 memcpy，否则建议逐个构造
-			if constexpr (std::is_trivially_copyable_v<T>) {
-				memcpy(_data, other._data, _size * sizeof(T));
+			if (!_data || !other._data) {
+				PLS_ERROR("Memory allocation failed!");
 			}
-			else {
-				for (size_t i = 0; i < _size; ++i) {
-					new(&_data[i]) T(other._data[i]);
+			if constexpr (platform == Platform::CPU)
+			{
+				// 对于 trivially copyable 的类型可以使用 memcpy，否则建议逐个构造
+				if constexpr (std::is_trivially_copyable_v<T>) {
+					memcpy(_data, other._data, _size * sizeof(T));
 				}
+				else {
+					for (size_t i = 0; i < _size; ++i) {
+						new(&_data[i]) T(other._data[i]);
+					}
+				}
+			}
+			else
+			{
+#ifdef __CUDACC__
+				CUDA_CHECK(cudaMemcpy(_data, other.Data(), _size * sizeof(T), cudaMemcpyDeviceToDevice));
+				CUDA_CHECK(cudaDeviceSynchronize());
+#else
+				static_assert(deviceType != Platform::CUDA, "CUDA support is disabled!");
+#endif
 			}
 		}
 
-		// disallow cross platform copy
-		HOST_FUNC Storage(const Storage& other) = delete;
-
-		// platform Info
-		HOST_FUNC Platform PlatformInfo() const
+		Storage(Storage&& other) noexcept
+			: _data(other._data),
+			_size(other._size),
+			_capacity(other._capacity),
+			_allocator(std::move(other._allocator))
 		{
-			return platform;
+			// 置空源对象
+			other._data = nullptr;
+			other._size = 0;
+			other._capacity = 0;
 		}
 
 		// deconstructor
@@ -136,27 +157,27 @@ namespace Polaris
 
 		HOST_FUNC void PushBack(const T& value)
 		{
-			static_assert(constexpr(deviceType == Platform::CPU), "push back on device memory is not allowed");
+			static_assert(deviceType == Platform::CPU, "push back on device memory is not allowed");
 			if (_size == _capacity) _expand(_capacity * 2);
 			_data[_size++] = value;
 		}
 
 		HOST_FUNC void PopBack()
 		{
-			static_assert(constexpr(deviceType == Platform::CPU), "pop back on device memory is not allowed");
+			static_assert(deviceType == Platform::CPU, "pop back on device memory is not allowed");
 			assert(_size > 0 && "Vector is empty!");
 			--_size;
 		}
 
 		HOST_FUNC T& operator[](size_t index)
 		{
-			static_assert(constexpr(deviceType == Platform::CPU), "Direct visit of device memory is not allowed");
+			static_assert(deviceType == Platform::CPU, "Direct visit of device memory is not allowed");
 			assert(index < _size && "Index out of bounds!");
 			return _data[index];
 		}
 
 		HOST_FUNC const T& operator[](size_t index) const {
-			static_assert(constexpr(deviceType == Platform::CPU), "Direct visit of device memory is not allowed");
+			static_assert(deviceType == Platform::CPU, "Direct visit of device memory is not allowed");
 			assert(index < _size && "Index out of bounds!");
 			return _data[index];
 		}
@@ -171,7 +192,7 @@ namespace Polaris
 			const T* srcData = src.Data();
 			T* dstData = this->Data();
 
-			if constexpr (deviceType == Platform::CPU && OtherDevice == Platform::CPU) 
+			if constexpr (deviceType == Platform::CPU && OtherDevice == Platform::CPU)
 			{
 				// std::copy
 				std::copy(srcData, srcData + src.Size(), dstData);
@@ -204,7 +225,7 @@ namespace Polaris
 				CUDA_CHECK(cudaDeviceSynchronize()); // 确保拷贝完成
 			}
 #else
-			else 
+			else
 			{
 				// disable cross platform copy if no CUDA is found
 				static_assert(deviceType == Platform::CPU && OtherDevice == Platform::CPU,
@@ -217,7 +238,7 @@ namespace Polaris
 		template <Platform OtherDevice, typename OtherAllocator>
 		HOST_FUNC Storage<T, Platform::CPU> LoadToHost(const Storage<T, OtherDevice, OtherAllocator>& src)
 		{
-			static_assert(OtherDevice == Platform::CUDA, "L2H for non CUDA storage makes no sense, use Transfer instead");	
+			static_assert(OtherDevice == Platform::CUDA, "L2H for non CUDA storage makes no sense, use Transfer instead");
 			Storage<T, Platform::CPU> buffer;
 			buffer.Transfer(src);
 			return buffer;
@@ -240,13 +261,43 @@ namespace Polaris
 		HOST_FUNC size_t Capacity() const { return _capacity; }
 
 		// 清空Vector
-		void Clear() {
+		HOST_FUNC void Clear() {
 			_size = 0;
+		}
+
+		HOST_FUNC void ClearMemory() {
+			_allocator.deallocate(_data);
+			_capacity = 0;
+			_size = 0;
+		}
+
+		HOST_FUNC T* Data() {
+			return _data;
+		}
+
+		HOST_FUNC const T* Data() const {
+			return _data;
+		}
+
+		// 获取大小
+		HOST_FUNC void Print(bool printData = false) const
+		{
+			static_assert(deviceType == Platform::CPU, "print of device data is not allowed");
+			std::cout << "data Size: " << _size << "\tmemory occupation: " << Scalar(_capacity * sizeof(T)) / 1024.0 / 1024.0 << "Mbs" << std::endl;
+			if (printData)
+			{
+				std::cout << "Data: [" << std::endl;
+				PLS_FOR_I(_size)
+				{
+					std::cout << "index " << i << "\tdata: " << _data[i] << std::endl;
+				}
+				std::cout << "]" << std::endl;
+			}
 		}
 
 		// 迭代器支持
 		HOST_FUNC auto Begin()
-		{ 
+		{
 			if constexpr (deviceType == Platform::CUDA)
 			{
 #ifdef __CUDACC__

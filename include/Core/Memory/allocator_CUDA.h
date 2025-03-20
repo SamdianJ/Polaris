@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include "Platform/Platforms.h"
 #include <iostream>
+#include "Polaris.h"
 
 namespace cuda_utils
 {
@@ -40,7 +41,7 @@ namespace cuda_utils
 
 			T* ptr = nullptr;
 			CUDA_CHECK(cudaMalloc((void**)&ptr, n * sizeof(T)));
-			std::cout << "Device memory allocated: " << n * sizeof(T) << std::endl;
+			PLS_WARN("Device memory allocated {} Mb", Scalar(n * sizeof(T)) / 1024 / 1024);
 			return ptr;
 #else
 			static_assert(false, "CUDA is not activated!");

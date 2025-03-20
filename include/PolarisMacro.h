@@ -141,3 +141,10 @@
 #endif
 
 
+#define PLS_FOR_I(n)			for (std::size_t i = 0; i < n; ++i)
+#define PLS_FOR_I64(n)		for (std::uint64_t i = 0; i < n; ++i)
+#define PLS_FOR_J(n)			for (std::size_t j = 0; j < n; ++j)
+#define PLS_FOR_K(n)			for (std::size_t k = 0; k < n; ++k)
+#define PLS_FOR_RANGE_I(s,n)	for (std::int32_t i = s; i < n; ++i)
+#define PLS_FOR_RANGE_J(s,n)	for (std::int32_t j = s; j < n; ++j)
+
