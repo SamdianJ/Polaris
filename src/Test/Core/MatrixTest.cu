@@ -60,7 +60,7 @@ void Polaris::Device::MatrixTest()
 			bool elementTest = abs(cpuRes(i, j) - gpuResToCpu(i, j)) < eps;
 			if (!elementTest)
 			{
-				PLS_WARN("{}, {} element dismatch: {}", i, j, abs(cpuRes(i, j) - gpuResToCpu(i, j)));
+				PLS_WARN("{}, {} element dismatch: {}-{},{}", i, j, cpuRes(i, j), gpuResToCpu(i, j),abs(cpuRes(i, j) - gpuResToCpu(i, j)));
 			}
 			isSame = isSame && elementTest;
 		}

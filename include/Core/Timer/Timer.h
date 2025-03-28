@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include <cuda_runtime.h>
+#include "Polaris.h"
 
 class PlsTimer {
 public:
