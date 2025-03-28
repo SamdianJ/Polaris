@@ -17,6 +17,7 @@ namespace Polaris
 		cuda_utils::CudaAllocator<T>>::type>
 		class Storage
 	{
+
 	public:
 		static constexpr Platform platform = deviceType;
 		static constexpr Platform PlatformInfo()
@@ -56,11 +57,45 @@ namespace Polaris
 
 	public:
 		// iterator
-		class Iterator {
+		class iterator {
 		private:
 			T* _ptr;
 		public:
-			HOST_FUNC explicit Iterator(T* p) : _ptr(p) {}
+			HOST_FUNC iterator() 
+				: 
+				_ptr(nullptr) 
+			{}
+
+			HOST_FUNC iterator(T* p)
+				: 
+				_ptr(p) 
+			{}
+
+			HOST_FUNC iterator& operator++()
+			{
+				++_ptr;
+				return *this;
+			}
+
+			HOST_FUNC iterator& operator--()
+			{
+				++_ptr;
+				return *this;
+			}
+
+			HOST_FUNC iterator operator++(PlsInt32)
+			{
+				iterator ret(*this);
+				++_ptr;
+				return ret;
+			}
+
+			HOST_FUNC iterator operator--(PlsInt32)
+			{
+				iterator ret(*this);
+				--_ptr;
+				return ret;
+			}
 
 			HOST_FUNC T& operator*() {
 				if constexpr (deviceType == Platform::CUDA) {
@@ -68,21 +103,17 @@ namespace Polaris
 				}
 				return *_ptr;
 			}
-			HOST_FUNC Iterator& operator++() { ++_ptr; return *this; }
-			HOST_FUNC bool operator!=(const Iterator& other) const { return _ptr != other._ptr; }
-		};
 
-#ifdef __CUDACC__
-		//#include <thrust/device_ptr.h>
-		//		class CudaIterator {
-		//		private:
-		//			thrust::device_ptr<T> _ptr;
-		//		public:
-		//			HOST_FUNC explicit CudaIterator(T* p) : _ptr(thrust::device_pointer_cast(p)) {}
-		//			HOST_FUNC thrust::device_ptr<T> operator++() { return ++_ptr; }
-		//			HOST_FUNC bool operator!=(const CudaIterator& other) const { return _ptr != other._ptr; }
-		//		};
-#endif
+			HOST_FUNC
+				bool operator==(const iterator& other) const {
+				return _ptr == other._ptr;
+			}
+
+			HOST_FUNC
+				bool operator!=(const iterator& other) const {
+				return _ptr != other._ptr;
+			}
+		};
 
 		// constructor
 		HOST_FUNC explicit Storage(size_t initialCapacity = 4, const Allocator& allocator = Allocator())
@@ -133,7 +164,6 @@ namespace Polaris
 			_capacity(other._capacity),
 			_allocator(std::move(other._allocator))
 		{
-			// 置空源对象
 			other._data = nullptr;
 			other._size = 0;
 			other._capacity = 0;
@@ -169,17 +199,30 @@ namespace Polaris
 			--_size;
 		}
 
+		HOST_FUNC T& At(size_t index)
+		{
+			static_assert(deviceType == Platform::CPU, "Direct visit of device memory is not allowed");
+			assert(index < _size && "Index out of bounds!");
+			return reinterpret_cast<T&>(_data[index]);
+		}
+
+		HOST_FUNC const T& At(size_t index) const {
+			static_assert(deviceType == Platform::CPU, "Direct visit of device memory is not allowed");
+			assert(index < _size && "Index out of bounds!");
+			return reinterpret_cast<const T&>(_data[index]);
+		}
+
 		HOST_FUNC T& operator[](size_t index)
 		{
 			static_assert(deviceType == Platform::CPU, "Direct visit of device memory is not allowed");
 			assert(index < _size && "Index out of bounds!");
-			return _data[index];
+			return reinterpret_cast<T&>(_data[index]);
 		}
 
 		HOST_FUNC const T& operator[](size_t index) const {
 			static_assert(deviceType == Platform::CPU, "Direct visit of device memory is not allowed");
 			assert(index < _size && "Index out of bounds!");
-			return _data[index];
+			return reinterpret_cast<const T&>(_data[index]);
 		}
 
 		template <Platform OtherDevice, typename OtherAllocator>
@@ -269,14 +312,61 @@ namespace Polaris
 			_allocator.deallocate(_data);
 			_capacity = 0;
 			_size = 0;
+			_data = nullptr;
 		}
 
 		HOST_FUNC T* Data() {
-			return _data;
+			return reinterpret_cast<T*> (_data);
 		}
 
 		HOST_FUNC const T* Data() const {
-			return _data;
+			return reinterpret_cast<const T*> (_data);
+		}
+
+		HOST_FUNC void FillZero() {
+			if constexpr (platform == Platform::CUDA)
+			{
+				if (_size < 1)
+					return;
+
+				CUDA_CHECK(cudaMemset(_data, 0, _size * sizeof(T)));
+			}
+			else
+			{
+				std::memset(_data, 0, _size * sizeof(T));
+			}
+		}
+
+		HOST_FUNC void FillInfi() {
+			if constexpr (platform == Platform::CUDA)
+			{
+				if (_size < 1)
+					return;
+
+				CUDA_CHECK(cudaMemset(_data, 0x3f3f3f3f, _size * sizeof(T)));
+			}
+			else
+			{
+				std::memset(_data, 0x3f3f3f3f, _size * sizeof(T));
+			}
+		}
+
+		HOST_FUNC void Fill(T v) {
+			if constexpr (platform == Platform::CUDA) // TO DO should implemented on kernel
+			{
+				PLS_WARN("[Performance Warning] fill values on device is not recommended!");
+				Storage<T, Platform::CPU> tmp;
+				tmp.Resize(_size);
+				tmp.Fill(v);
+				Transfer(tmp);
+			}
+			else
+			{
+				PLS_FOR_I(_size)
+				{
+					_data[i] = v;
+				}
+			}
 		}
 
 		// 获取大小
@@ -298,32 +388,12 @@ namespace Polaris
 		// 迭代器支持
 		HOST_FUNC auto Begin()
 		{
-			if constexpr (deviceType == Platform::CUDA)
-			{
-#ifdef __CUDACC__
-				return CudaIterator(_data);
-#else
-				static_assert(deviceType != Platform::CUDA, "device iterator is disableed as CUDA support is disabled!")
-#endif
-			}
-			else
-			{
-				return Iterator(_data);
-			}
+			return iterator(_data);
 		}
-		HOST_FUNC auto End() {
-			if constexpr (deviceType == Platform::CUDA)
-			{
-#ifdef __CUDACC__
-				return CudaIterator(_data + _size);
-#else
-				static_assert(deviceType != Platform::CUDA, "device iterator is disableed as CUDA support is disabled!")
-#endif
-			}
-			else
-			{
-				return Iterator(_data + _size);
-			}
+
+		HOST_FUNC auto End() 
+		{
+			return iterator(reinterpret_cast<T*> (_data + _size));
 		}
 	};
 }

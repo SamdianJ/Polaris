@@ -30,9 +30,13 @@
 #ifdef __CUDACC__
 #define HOST_DEVICE_FUNC __host__ __device__
 #define HOST_FUNC __host__
+#define DEVICE_FUNC __device__
+#define KERNEL_FUNC __global__
 #else
 #define HOST_DEVICE_FUNC
 #define HOST_FUNC 
+#define DEVICE_FUNC
+#define KERNEL_FUNC
 #endif
 
 //--------------------------------------------
@@ -103,6 +107,25 @@
 #else
     #define PLS_ENGINE_INLINE inline
     #define PLS_ENGINE_NOINLINE
+#endif
+
+#if defined(__CUDA_ARCH__) && !defined(__INTELLISENSE__)
+#if defined(__CUDACC_RTC__) || (defined(__clang__) && defined(__CUDA__))
+#define PLS_PRAGMA_UNROLL _Pragma("unroll")
+#define PLS_PRAGMA_NO_UNROLL _Pragma("unroll 1")
+#else
+#define PLS_PRAGMA_UNROLL #pragma unroll
+#define PLS_PRAGMA_NO_UNROLL #pragma unroll 1
+#endif
+
+#define PLS_GEMM_LOOP PLS_PRAGMA_NO_UNROLL
+
+#else
+
+#define PLS_PRAGMA_UNROLL
+#define PLS_PRAGMA_NO_UNROLL
+#define PLS_GEMM_LOOP
+
 #endif
 
 //--------------------------------------------
