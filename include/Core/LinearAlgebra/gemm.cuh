@@ -7,7 +7,15 @@
 
 namespace Polaris
 {
-	HOST_FUNC cudaError_t gemm_kernel(size_t m, size_t n, size_t k, const Scalar* a, const Scalar* b, Scalar* c);
+	HOST_FUNC cudaError_t gemm_naive_kernel(size_t m, size_t n, size_t k, const Scalar* a, const Scalar* b, Scalar* c);
+
+	HOST_FUNC cudaError_t gemm_block_transpose_kernel(size_t m, size_t n, size_t k, const Scalar* a, const Scalar* b, Scalar* c);
+
+	HOST_FUNC cudaError_t gemm_smem_kernel(size_t m, size_t n, size_t k, const Scalar* a, const Scalar* b, Scalar* c);
+
+	HOST_FUNC cudaError_t gemm_smem_tiled_kernel(size_t m, size_t n, size_t k, const Scalar* a, const Scalar* b, Scalar* c);
+
+	HOST_FUNC cudaError_t gemm_block_tiled_kernel(size_t m, size_t n, size_t k, const Scalar* a, const Scalar* b, Scalar* c);
 }
 
 #endif

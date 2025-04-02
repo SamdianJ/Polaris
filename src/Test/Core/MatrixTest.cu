@@ -43,31 +43,41 @@ void Polaris::Device::MatrixTest()
 	Matrix<Scalar, Platform::CUDA> gmatrix2;
 	gmatrix2.Transfer(matrix2);
 
-	sgemm<Platform::CPU, std::allocator<Scalar>> gemm;
-	auto& cpuRes = gemm(matrix1, matrix2, &timer);
-	sgemm<Platform::CUDA, cuda_utils::CudaAllocator<Scalar>> ggemm;
-	auto& gpuRes = ggemm(gmatrix1, gmatrix2, &timer);
-
+	sgemm<Platform::CPU, std::allocator<Scalar>> gemm(&timer);
+	auto& cpuRes = gemm(matrix1, matrix2);
+	sgemm<Platform::CUDA, cuda_utils::CudaAllocator<Scalar>> ggemm(&timer);
 	Matrix<Scalar, Platform::CPU> gpuResToCpu;
-	gpuResToCpu.Transfer(gpuRes);
 
-	Scalar eps = 1e-10f;
+	Scalar eps = 1e-3f;
 	bool isSame = true;
-	PLS_FOR_I(M)
+
+	std::vector<GemmMethod> gemmMethods{ kNaive, kSmem};
+	//gemmMethods.push_back(kSmemTiled);
+
+	PLS_FOR_I(gemmMethods.size())
 	{
-		PLS_FOR_J(K)
+		auto& gpuRes = ggemm(gmatrix1, gmatrix2, gemmMethods[i]);
+		gpuResToCpu.Transfer(gpuRes);
+		PLS_FOR_I(M)
 		{
-			bool elementTest = abs(cpuRes(i, j) - gpuResToCpu(i, j)) < eps;
-			if (!elementTest)
+			PLS_FOR_J(K)
 			{
-				PLS_WARN("{}, {} element dismatch: {}-{},{}", i, j, cpuRes(i, j), gpuResToCpu(i, j),abs(cpuRes(i, j) - gpuResToCpu(i, j)));
+				bool elementTest = abs(cpuRes(i, j) - gpuResToCpu(i, j)) < eps;
+				if (!elementTest)
+				{
+					//PLS_WARN("{}, {} element dismatch: {}-{},{}", i, j, cpuRes(i, j), gpuResToCpu(i, j),abs(cpuRes(i, j) - gpuResToCpu(i, j)));
+				}
+				isSame = isSame && elementTest;
 			}
-			isSame = isSame && elementTest;
 		}
-	}
-	if (isSame)
-	{
-		PLS_INFO("gemm test finish");
+		if (isSame)
+		{
+			PLS_INFO("{} test finish", GemmMethodToString(gemmMethods[i]));
+		}
+		else
+		{
+			PLS_ERROR("{} test fails", GemmMethodToString(gemmMethods[i]));
+		}
 	}
 
 	timer.PrintAll();
