@@ -13,7 +13,7 @@ namespace Polaris
 		kExecutionError
 	};
 
-	struct KernelLaunchConfig
+	struct KernelLaunchConfig // 2D support
 	{
 		dim3 grid;
 		dim3 block;
